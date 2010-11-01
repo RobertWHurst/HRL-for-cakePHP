@@ -1,0 +1,228 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+	<title>RobertWHurst/HRL-for-cakePHP @ GitHub</title>
+	
+	<style type="text/css">
+		body {
+  		margin-top: 1.0em;
+  		background-color: #6f5a20;
+		  font-family: "Helvetica,Arial,FreeSans";
+  		color: #ffffff;
+    }
+    #container {
+      margin: 0 auto;
+      width: 700px;
+    }
+		h1 { font-size: 3.8em; color: #90a5df; margin-bottom: 3px; }
+		h1 .small { font-size: 0.4em; }
+		h1 a { text-decoration: none }
+		h2 { font-size: 1.5em; color: #90a5df; }
+    h3 { text-align: center; color: #90a5df; }
+    a { color: #90a5df; }
+    .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
+    .download { float: right; }
+		pre { background: #000; color: #fff; padding: 15px;}
+    hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
+    .footer { text-align:center; padding-top:30px; font-style: italic; }
+	</style>
+	
+</head>
+
+<body>
+  <a href="http://github.com/RobertWHurst/HRL-for-cakePHP"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+
+  <div id="container">
+
+    <div class="download">
+      <a href="http://github.com/RobertWHurst/HRL-for-cakePHP/zipball/master">
+        <img border="0" width="90" src="http://github.com/images/modules/download/zip.png"></a>
+      <a href="http://github.com/RobertWHurst/HRL-for-cakePHP/tarball/master">
+        <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
+    </div>
+
+    <h1><a href="http://github.com/RobertWHurst/HRL-for-cakePHP">HRL for cakePHP</a>
+      <span class="small">by <a href="http://github.com/RobertWHurst">RobertWHurst</a></span></h1>
+
+    <div class="description">
+      This is the Hierarchical Resource Loader or HRL. It is cakePHP3 helper created to help programmers with managing their CSS and JavaScript dependencies. When a file is queued it can have dependencies declared. If a file has dependencies it will not be loaded until all of its dependencies are loaded first.
+    </div>
+
+    <p>The Hierarchical Resource Loader v1.0
+Introduction
+
+This is the Hierarchical Resource Loader or HRL. It is cakePHP3 helper created to help programmers with managing their CSS and JavaScript dependencies. When a file is queued it can have dependencies declared. If a file has dependencies it will not be loaded until all of its dependencies are loaded first. Files are identified by keys. These are optional but must be supplied if the file is required by dependent file. Without a key a file cannot be identified as a dependency.
+Loading CSS or JavaScript
+
+Loading a CSS or JavaScript file can be done in a few different ways. Note that both js() and css() accept nearly identical input.
+
+The Easy Way To just load a script or stylesheet...
+
+//load style.css
+$hrl->css( 'style.css' );
+
+//load script.js
+$hrl->css( 'script.js' );
+
+This is exactly the same as using cakes html helper with the exception that it is output by the hrl instead of the html helper. Note that any file loaded this way cannot be a dependency. This is because the file has no key.
+
+Dependencies
+
+When you want a file to only load only after its dependencies have then do the following:
+
+//load myscript
+//Note: depends on jquery and jquery ui.
+$hrl->js(array(
+    'url' =>  'myscript.js',
+    'key' =>'myscript',
+    'requires' => array( 'jQuery', 'jQuery.ui' )
+));
+
+//load jquery
+$hrl->js(array(
+    'url' => 'jquery.js',
+    'key' => 'jQuery'
+));
+
+//load jquery ui
+$hrl->js(array(
+    'url' => 'jquery.ui.js',
+    'key' => 'jQuery.ui'
+    'requires' => 'jQuery'
+));
+
+In this example 'myscript' will wait for both jQuery and jQuery UI to be included.
+
+Printing it all out
+
+Including your queued files can be done by executing js() or css() without any arguments.
+
+//prints out the queued css in order
+$hrl->css();
+
+//prints out the queued JavaScript
+$hrl->js();
+
+Debugging
+
+If Can't figure out why a file isn't loading or would like to see the order your files are being loaded in then call print_log() after js() and css() have printed the includes to your layout.
+
+//prints the log wrapped with <pre> tags
+$hrl->print_log();
+
+//prints the log wrapped in a html comment
+$hrl->print_log( true );
+
+//example of a log
+<!--
+
+
+
+                                 HIERARCHICAL RESOURCE LOADER LOG
+
+====================================================================================================
+
+CSS FILES
+----------------------------------------------------------------------------------------------------
+| # | LOADED: File style is loaded.
+----------------------------------------------------------------------------------------------------
+
+JS FILES
+----------------------------------------------------------------------------------------------------
+|   | REQUIRED: File myscript requirements...
+|   | - PENDING: File jquery must load first. postponed...
+| # | LOADED: File jQuery is loaded.
+| # | LOADED: File jQuery.ui is loaded.
+| # | LOADED: File myscript is loaded.
+----------------------------------------------------------------------------------------------------
+
+
+
+-->
+
+Loading a Couple Files at Once
+
+$hrl->css('file1.css', 'file2.css', 'file3.css');
+//or
+$hrl->css(array(
+    array(
+        'key' => 'file1',
+        'url' => 'http://example.com/file1.css',
+        'requires' => 'file2'
+    ),
+    array(
+        'key' => 'file2',
+        'url' => 'file2.css',
+    )
+    array(
+        'url' => 'file3'
+    )
+);
+
+Structure of a File Array
+
+[file array] = array(
+    'url' => string [file name or url],
+    'key' => string [key for file],
+    'requires' => string [file key] or array [array of keys]
+    (css only) 'media' => string [media tag attribute]
+)
+
+Credit
+
+This Helper was written by Robert Hurst. Please do not sell this helper and give credit where credit is due.
+
+Cheers and enjoy.</p><h2>Dependencies</h2>
+<p>PHP5 and CakePHP</p>
+<h2>Install</h2>
+<p>Move hrl.php into app/views/helpers/ and load it by adding 'Hrl' to the $helpers variable in the app_controller.php (or any other controller).</p>
+<h2>License</h2>
+<p>Copyright (c) 2010 Robert Hurst
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.</p>
+<h2>Authors</h2>
+<p>Robert Hurst (Robert@ThinkTankDesign.ca)<br/><br/>      </p>
+<h2>Contact</h2>
+<p>Robert Hurst (Robert@ThinkTankDesign.ca)<br/>      </p>
+
+
+    <h2>Download</h2>
+    <p>
+      You can download this project in either
+      <a href="http://github.com/RobertWHurst/HRL-for-cakePHP/zipball/master">zip</a> or
+      <a href="http://github.com/RobertWHurst/HRL-for-cakePHP/tarball/master">tar</a> formats.
+    </p>
+    <p>You can also clone the project with <a href="http://git-scm.com">Git</a>
+      by running:
+      <pre>$ git clone git://github.com/RobertWHurst/HRL-for-cakePHP</pre>
+    </p>
+
+    <div class="footer">
+      get the source code on GitHub : <a href="http://github.com/RobertWHurst/HRL-for-cakePHP">RobertWHurst/HRL-for-cakePHP</a>
+    </div>
+
+  </div>
+
+  
+</body>
+</html>
