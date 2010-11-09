@@ -5,6 +5,14 @@ Introduction
 
 This is the Hierarchical Resource Loader or HRL. It is cakePHP3 helper created to help programmers with managing their CSS and JavaScript dependencies. When a file is queued it can have dependencies declared. If a file has dependencies it will not be loaded until all of its dependencies are loaded first. Files are identified by keys. These are optional but must be supplied if the file is required by dependent file. Without a key a file cannot be identified as a dependency.
 
+HRL OPTIONS
+-----------
+There if you want your css and js merged then set __combine_files__ to true.
+
+	$hrl->combine_files = true;
+
+If __combine_files__ is set to false it will include each file with its own link or script tag.
+
 Loading CSS or JavaScript
 -------------------------
 Loading a CSS or JavaScript file can be done in a few different ways. Note that both __js()__ and __css()__ accept nearly identical input.
