@@ -8,7 +8,7 @@
  * be supplied if the file is required by dependant file. Without a key
  * a file can not be identified as a dependency.
  *
- * See the readme for instructions.
+ * See the readme for instructions and licence information.
  *
  * @verson 1.0
  * @author Robert Hurst
@@ -17,6 +17,8 @@ class HrlHelper extends AppHelper {
 
 	// PUBLIC
 	// ---------------------------------------------------------
+
+	public $combine_files = true;
 
 	/**
 	 * @description Queues a css file(s). See the readme for accepted format.
@@ -61,6 +63,10 @@ class HrlHelper extends AppHelper {
 		}
 	}
 
+	//public $css_ext = '.css';
+	public $css_ext = '.css';
+	public $js_ext = '.js';
+
 	//include the html helper
 	public $helpers = array( 'Html' );
 
@@ -68,6 +74,16 @@ class HrlHelper extends AppHelper {
 	// ---------------------------------------------------------
 
 	private $log = "\n\n                                 HIERARCHICAL RESOURCE LOADER LOG\n\n====================================================================================================\n\n";
+
+	private $buffer = array(
+		'css' => '',
+		'js' => ''
+	);
+
+	private $signature = array(
+		'css' => '',
+		'js' => ''
+	);
 
 	private $default_file_vals = array(
 		'css' => array(
@@ -87,6 +103,114 @@ class HrlHelper extends AppHelper {
 		'css' => array( 'Files' => array() ),
 		'js' => array( 'Files' => array() )
 	);
+
+
+	private function allfiles($directory, $recursive = true) {
+		 $result = array();
+		 $handle =  opendir($directory);
+		 while ($datei = readdir($handle))
+		 {
+			  if (($datei != '.') && ($datei != '..'))
+			  {
+				   $file = $directory.$datei;
+				   if (is_dir($file)) {
+						if ($recursive) {
+							 $result = array_merge($result, $this->allfiles($file.'/'));
+						}
+				   } else {
+						$result[] = $file;
+				   }
+			  }
+		 }
+		 closedir($handle);
+		 return $result;
+	}
+
+	private function dirmtime($directory, $recursive = true) {
+		 $allFiles = $this->allfiles($directory, $recursive);
+		 $highestKnown = 0;
+		 foreach ($allFiles as $val) {
+			  $currentValue = filemtime($val);
+			  if ($currentValue > $highestKnown) $highestKnown = $currentValue;
+		 }
+		 return $highestKnown;
+	}
+
+	private function generate_file_name( $type ) {
+		return sha1( $this->signature[$type] );
+	}
+
+	private function merge( $type, $file = null ){
+
+		//if the merge is being dumped to a file
+		if( $type && ! $file ){
+
+			if( $this->buffer[$type] != '' ){
+
+				//check for the output folder and make it if it doesn't exist
+				$cache_dir = WWW_ROOT . '/c' . $type . '/';
+
+				if( ! file_exists( $cache_dir ) ){
+					if( ! @mkdir( $cache_dir, '0777' ) ){
+						//if the directory could not be made return false
+						$this->log .= "| ! | ERROR: Failed to make the 'c{$type}' directory.\n";
+						return false;
+					}
+					$this->log .= "|   | NEWDIR: The directory 'c{$type}' has been created.\n";
+				}
+
+				//generate a file record
+				$file_url = $this->generate_file_name( $type );
+				$file = array(
+					'key' => $file_url,
+					'url' => $file_url
+				);
+
+				if( $this->dirmtime( $cache_dir ) <  $this->dirmtime( CSS ) ){
+
+					$this->log .= "| # | NEW CACHE: The {$type} has been dumped to cache file {$file['key']}.\n";
+
+					//create a new cache file and dump the buffer into it.
+					$Fpointer = fopen( $cache_dir . $file_url . '.' . $type, 'w+');
+					fwrite( $Fpointer, $this->buffer[$type] );
+					fclose( $Fpointer );
+				} else {
+					$this->log .= "| # | CACHE: Loaded the cached {$type} from file {$file['key']}.\n";
+				}
+
+				return $file;
+
+			}
+
+		//add file to the output buffer
+		} else if( $type && $file ){
+
+			if( ! @preg_match( '/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/', $file['url']) ){
+				switch( $type ){
+					case 'css':
+						$base_path = CSS;
+					break;
+					case 'js':
+						$base_path = JS;
+					break;
+				}
+			} else {
+				$base_path = '';
+			}
+
+			//dump the file to the buffer
+			$Fpointer = fopen( $base_path . $file['url'] . '.' . $type, 'r' );
+			$Fstring = fread( $Fpointer, filesize( $base_path . $file['url'] . '.' . $type ) );
+			fclose( $Fpointer );
+			$this->buffer[$type] .= $Fstring . "\n";
+
+			//save the file key to create a signature from
+			$this->signature[$type] .= $file['key'];
+
+		} else {
+			return false;
+		}
+	}
 
 	private function queue( $type, $files ){
 
@@ -188,15 +312,39 @@ class HrlHelper extends AppHelper {
 				if( empty( $file['requires'] ) ){
 
 					//make sure the file exists
-					if( file_exists( CSS . $file['url'] ) || @preg_match( '/http/', $file['url']) ){
-						switch( $type ){
-							case 'css':
-								$output .= $this->Html->css( $file['url'], array( 'media' => $file['media'], 'inline' => true ) ) . "\n";
-							break;
+					if( $type == 'css' ){
+						$base_path = CSS;
+						$ext_set = $this->css_ext;
+					} else if( $type == 'js' ) {
+						$base_path = JS;
+						$ext_set = $this->js_ext;
+					}
 
-							case 'js':
-								$output .= $this->Html->script( $file['url'], array( 'inline' => true ) ) . "\n";
-							break;
+					if( ! is_array( $ext_set ) ){
+						$ext_set = array( $ext_set );
+					}
+
+					$file_exists = false;
+					foreach( $ext_set as $ext ){
+						if( file_exists( $base_path . $file['url'] . $ext ) || @preg_match( '/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/', $file['url']) ){
+							$file_exists = true;
+						}
+					}
+
+					if( $file_exists ){
+						if( $this->combine_files == true ){
+
+							$this->merge( $type, $file );
+
+						} else {
+							switch( $type ){
+								case 'css':
+									$output .= $this->Html->css( $file['url'], null, array( 'media' => $file['media'], 'inline' => true ) ) . "\n";
+								break;
+								case 'js':
+									$output .= $this->Html->script( $file['url'], array( 'inline' => true ) ) . "\n";
+								break;
+							}
 						}
 						$this->log .= "| # | LOADED: File {$file['key']} is loaded. \n";
 
@@ -208,12 +356,21 @@ class HrlHelper extends AppHelper {
 
 					unset( $this->includes[$type]['Files'][$file_key] );
 				}
-
 			}
+		}
+
+		//check for merged source and add to to the output
+		if( ! empty( $this->buffer[$type] ) ){
+
+			//get the merged file
+			$bFile = $this->merge( $type );
+
+			$output .= $this->Html->css( '/c' . $type . '/' . $bFile['url'], null, array( 'media' => 'all', 'inline' => true ) ) . "\n";;
 		}
 
 		$this->log .= "----------------------------------------------------------------------------------------------------\n\n";
 
 		return $output;
 	}
+
 }
