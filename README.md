@@ -1,5 +1,5 @@
-The Hierarchical Resource Loader v1.0
-=====================================
+The Hierarchical Resource Loader
+================================
 Introduction
 ------------
 
