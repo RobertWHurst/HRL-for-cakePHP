@@ -147,6 +147,45 @@ class HrlHelper extends AppHelper {
 		return sha1( $this->signature[$type] );
 	}
 
+	private function parse_args($defaults, $arguments, $keep_unset = false) {
+
+		if( ! is_array( $defaults ) || ! is_array( $arguments ) ){
+			return $defaults; //just return the defaults (something goofed)
+		}
+
+		//copy the defaults
+		$results = $defaults;
+		foreach($arguments as $key => $argument){
+
+			//if the argument is invalid continue the loop
+			if( ! $keep_unset && ! isset( $defaults[$key] ) )
+				continue; //the option is invalid
+
+			//if the argument is actually an array of argument
+			if(is_array($argument)){
+				//if keep_unset is true and the default is not an array add the array
+				if($keep_unset && !is_array($defaults[$key])){
+					$results[$key] = $argument;
+					continue; //advance the loop
+				}
+
+				//if the argument is an array then make sure it is valid
+				if(!is_array($defaults[$key]))
+					continue; //the option is not an array
+
+				//set the suboptions
+				$subdefaults = $defaults[$key];
+				$results[$key] = $this->parse_args($subdefaults, $argument, $keep_unset);
+			} else {
+
+				//just set it
+				$results[$key] = $argument;
+			}
+		}
+
+		return $results;
+	}
+
 	private function merge( $type, $file = null ){
 
 		//if the merge is being dumped to a file
@@ -243,7 +282,7 @@ class HrlHelper extends AppHelper {
 			foreach( $files as $file ) {
 
 				//parse the file against the default values
-				$file = parse_args($this->default_file_vals[$type], $file, true);
+				$file = $this->parse_args($this->default_file_vals[$type], $file, true);
 
 				if( $file['key'] === '' ){
 					$try_key = 0;
