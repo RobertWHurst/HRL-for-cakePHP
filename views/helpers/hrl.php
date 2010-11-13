@@ -18,10 +18,17 @@ class HrlHelper extends AppHelper {
 	// PUBLIC
 	// ---------------------------------------------------------
 
-	public $combine_files = true;
+	/**
+	 * Setting this to true will enable merging the output of the
+	 * hrl into single cache files.
+	 *
+	 * @var bool
+	 */
+	public $merge = true;
 
 	/**
-	 * @description Queues a css file(s). See the readme for accepted format.
+	 * Queues a css file(s). See the readme for accepted format.
+	 *
 	 * @param null $files
 	 * @return void
 	 */
@@ -150,6 +157,15 @@ class HrlHelper extends AppHelper {
 				//check for the output folder and make it if it doesn't exist
 				$cache_dir = WWW_ROOT . '/c' . $type . '/';
 
+				switch( $type ){
+					case 'css':
+						$base_dir = CSS;
+					break;
+					case 'js':
+						$base_dir = JS;
+					break;
+				}
+
 				if( ! file_exists( $cache_dir ) ){
 					if( ! @mkdir( $cache_dir, '0777' ) ){
 						//if the directory could not be made return false
@@ -166,16 +182,16 @@ class HrlHelper extends AppHelper {
 					'url' => $file_url
 				);
 
-				if( $this->dirmtime( $cache_dir ) <  $this->dirmtime( CSS ) ){
+				if( $this->dirmtime( $cache_dir ) <  $this->dirmtime( $base_dir ) ){
 
-					$this->log .= "| # | NEW CACHE: The {$type} has been dumped to cache file {$file['key']}.\n";
+					$this->log .= "| # | NEW CACHE: The {$type} has been dumped to cache file '{$file['key']}'.\n";
 
 					//create a new cache file and dump the buffer into it.
 					$Fpointer = fopen( $cache_dir . $file_url . '.' . $type, 'w+');
 					fwrite( $Fpointer, $this->buffer[$type] );
 					fclose( $Fpointer );
 				} else {
-					$this->log .= "| # | CACHE: Loaded the cached {$type} from file {$file['key']}.\n";
+					$this->log .= "| # | CACHE: Loaded the cached {$type} from file '{$file['key']}'.\n";
 				}
 
 				return $file;
@@ -200,7 +216,14 @@ class HrlHelper extends AppHelper {
 
 			//dump the file to the buffer
 			$Fpointer = fopen( $base_path . $file['url'] . '.' . $type, 'r' );
-			$Fstring = fread( $Fpointer, filesize( $base_path . $file['url'] . '.' . $type ) );
+
+			if( filesize( $base_path . $file['url'] . '.' . $type ) > 0 ){
+				$Fstring = fread( $Fpointer, filesize( $base_path . $file['url'] . '.' . $type ) );
+			} else {
+				$this->log .= "| ! | ERROR: File '{$file['key']}' is corrupt or missing.\n";
+				$Fstring = '';
+			}
+
 			fclose( $Fpointer );
 			$this->buffer[$type] .= $Fstring . "\n";
 
@@ -288,7 +311,7 @@ class HrlHelper extends AppHelper {
 				//if the record has dependancies attached strip the ones that have been loaded
 				if( ! empty( $file['requires'] ) ){
 
-					$this->log .= "|   | REQUIRED: File {$file_key} requirements...\n";
+					$this->log .= "|   | REQUIRED: Proccessing file '{$file_key}' dependancies.\n";
 
 					foreach( $file['requires'] as $dependancy_key => $required_key ){
 						//if the requirement does not exist skip to the next file
@@ -325,6 +348,7 @@ class HrlHelper extends AppHelper {
 					}
 
 					$file_exists = false;
+					$file_exists = false;
 					foreach( $ext_set as $ext ){
 						if( file_exists( $base_path . $file['url'] . $ext ) || @preg_match( '/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/', $file['url']) ){
 							$file_exists = true;
@@ -332,7 +356,7 @@ class HrlHelper extends AppHelper {
 					}
 
 					if( $file_exists ){
-						if( $this->combine_files == true ){
+						if( $this->merge == true ){
 
 							$this->merge( $type, $file );
 
@@ -346,12 +370,12 @@ class HrlHelper extends AppHelper {
 								break;
 							}
 						}
-						$this->log .= "| # | LOADED: File {$file['key']} is loaded. \n";
+						$this->log .= "| # | LOADED: File '{$file['key']}' is loaded. \n";
 
 						//add the file key to the loaded_keys array and remove the file from the includes array
 						$loaded_keys[] = $file_key;
 					} else {
-						$this->log .= "| ! | FAILED: File {$file['key']} does not exist.\n";
+						$this->log .= "| ! | FAILED: File '{$file['key']}' does not exist.\n";
 					}
 
 					unset( $this->includes[$type]['Files'][$file_key] );
@@ -365,7 +389,15 @@ class HrlHelper extends AppHelper {
 			//get the merged file
 			$bFile = $this->merge( $type );
 
-			$output .= $this->Html->css( '/c' . $type . '/' . $bFile['url'], null, array( 'media' => 'all', 'inline' => true ) ) . "\n";;
+			switch( $type ){
+				case 'css':
+					$output .= $this->Html->css( '/c' . $type . '/' . $bFile['url'], null, array( 'media' => 'all', 'inline' => true ) ) . "\n";
+				break;
+				case 'js':
+					$output .= $this->Html->script( '/c' . $type . '/' . $bFile['url'], array( 'inline' => true ) ) . "\n";
+				break;
+			}
+
 		}
 
 		$this->log .= "----------------------------------------------------------------------------------------------------\n\n";
