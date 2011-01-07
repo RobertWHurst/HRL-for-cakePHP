@@ -36,7 +36,7 @@ class HrlHelper extends AppHelper {
 	 *
 	 * @var bool
 	 */
-	public $css_tidy = false;
+	public $css_tidy = true;
 
 
 
@@ -611,7 +611,7 @@ class HrlHelper extends AppHelper {
 					//If the file exists then proceed to load it.
 					if( $file_exists ){
 
-						//run the file record through any modifiers.
+						//run the file record through processing
 						if( $this->process_file( $type, $file ) ){
 
 							//log that the file was loaded successfully.
@@ -635,23 +635,6 @@ class HrlHelper extends AppHelper {
 	    //print the output from the modifiers
 		$output = $this->get_output( $type );
 
-#		//check for merged source and add to to the output
-#		if( ! empty( $this->buffer[$type] ) ){
-#
-#			//get the merged file
-#			$bFile = $this->merge( $type );
-#
-#			switch( $type ){
-#				case 'css':
-#					$output .= $this->Html->css( '/c' . $type . '/' . $bFile['url'], null, array( 'media' => 'all', 'inline' => true ) ) . "\n";
-#				break;
-#				case 'js':
-#					$output .= $this->Html->script( '/c' . $type . '/' . $bFile['url'], array( 'inline' => true ) ) . "\n";
-#				break;
-#			}
-#
-#		}
-
 		//end the hrl log
 		$this->log .= "----------------------------------------------------------------------------------------------------\n\n";
 
@@ -661,14 +644,6 @@ class HrlHelper extends AppHelper {
 
 
 	public function process_file( $type, $file ){
-
-		if( $this->css_tidy ){
-			$file = $this->css_tidy( $type, $file );
-		}
-
-		if( $this->js_min ){
-			$file = $this->js_min( $type, $file );
-		}
 
 		if( $this->merge ){
 			return $this->merge( $type, $file );
@@ -760,7 +735,7 @@ class HrlHelper extends AppHelper {
 			fclose( $Fpointer );
 		} else {
 			$this->log .= "| ! | ERROR: '{$file['key']}' - File is corrupt or missing.\n";
-		    return false;
+			return false;
 		}
 
 		/*
@@ -782,7 +757,7 @@ class HrlHelper extends AppHelper {
 		if( $this->buffer[$type] != '' ){
 
 			//set the cache directory
-			$cache_dir = WWW_ROOT . '/' . $type . '/c/';
+			$cache_dir = WWW_ROOT . $type . DS . 'c' . DS;
 
 			//Set the base directory based on merge file type.
 			switch( $type ){
@@ -805,24 +780,24 @@ class HrlHelper extends AppHelper {
 					 * If The process is denied access to the file system save an error
 					 * to the log and return false.
 					 */
-					$this->log .= "| ! | ERROR: Failed to make the 'c{$type}' directory.\n";
+					$this->log .= "| ! | ERROR: Failed to make the '{$type}/c' directory.\n";
 					return false;
 				}
 
 				/*
 				 * If the directory was created correctly log it.
 				 */
-				$this->log .= "|   | NEWDIR: The directory 'c{$type}' has been created.\n";
+				$this->log .= "|   | NEWDIR: The directory '{$type}/c' has been created.\n";
 			}
 
 			/*
 			 * Generate a file record new cache file so it can be loaded like a standard file.
 			 */
 			$file = $this->generate_file_name( $type );
-			$file_dir = $cache_dir . $file;
+			$file_dir = $cache_dir . $file . '.' . $type;
 			$file = array(
 				'key' => $file,
-				'url' => 'c/' . $file
+				'url' => 'c' . DS . $file
 			);
 
 		    /*
@@ -845,7 +820,22 @@ class HrlHelper extends AppHelper {
 				$this->log .= "| # | NEW CACHE: The {$type} has been dumped to cache '{$file['key']}'.\n";
 
 				//Create a new cache file and dump the buffer into it.
-				$Fpointer = fopen( $file_dir . '.' . $type, 'w+');
+				$Fpointer = fopen( $file_dir, 'w+');
+
+				//run filters
+				if( $type == 'css' ){
+					
+					if( $this->css_tidy ){
+
+						App::import( 'Vendor', 'Hrl.csstidy', array( 'file' => 'csstidy' . DS . 'class.csstidy.php' ) );
+						$this->CT = new csstidy;
+						$this->CT->parse( $this->buffer['css'] );
+						$this->buffer['css'] = $this->CT->print->plain();
+					    
+					}
+
+				}
+
 				fwrite( $Fpointer, $this->buffer[$type] );
 				fclose( $Fpointer );
 
@@ -861,6 +851,7 @@ class HrlHelper extends AppHelper {
 		}
 
 	}
+
 
 
 
@@ -940,7 +931,7 @@ class HrlHelper extends AppHelper {
 				 */
 				if ( is_dir( $file ) ) {
 					if ( $recursive ) {
-						$result = array_merge( $result, $this->allFiles( $file.'/' ) );
+						$result = array_merge( $result, $this->allFiles( $file . DS ) );
 					}
 
 				/*
@@ -977,5 +968,6 @@ class HrlHelper extends AppHelper {
 		 * files signature.
 		 */
 		return sha1( $this->signature[$type] );
+	    
 	}
 }

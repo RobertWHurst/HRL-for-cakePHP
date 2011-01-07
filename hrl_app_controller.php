@@ -6,4 +6,5 @@ class HrlAppController extends AppController {
 		App::import( 'Vendor', 'cssTidy', array( 'file' => 'csstidy' . DS . 'class.csstidy.php' ) );
 
 	}
+	
 }
