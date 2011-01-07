@@ -1,6 +1,6 @@
 <?php
 /**
- * This is the Hierarchical Resource Loader or HRL. It is cakePHP3 helper
+ * This is the Hierarchical Resource Loader or HRL. It is cakePHP 1.3 helper
  * created to help programmers with managing their css and javascript
  * dependancies. When a file is queued it can have dependancies declared.
  * If a file has dependancies it will not be loaded until all of them are
@@ -14,8 +14,6 @@
  * @author Robert Hurst
  */
 class HrlHelper extends AppHelper {
-
-
 
 
 
